@@ -40,4 +40,48 @@ CHIP CPU {
 
     PARTS:
     // Put your code here:
+    // Preparation
+    Not(in=instruction[15], out=C);
+    Mux16(a=instruction, b=false, sel=C, out[4]=D, out[5]=A, out[12]=AM);
+
+    // First Mux16
+    Mux16(a=lastOut, b=instruction, sel=C, out=mux1);
+
+    // A Register
+    Or(a=A, b=C, out=CA);
+    ARegister(in=mux1, load=CA, out=AReg, out[0..14]=addressM);
+
+    // writeM
+    And(a=instruction[15], b=instruction[3], out=writeM);
+
+    // Second Mux16
+    And(a=AM, b=instruction[15], out=AMC);
+    Mux16(a=AReg, b=inM, sel=AMC, out=mux2);
+
+    // D register
+    And(a=D, b=instruction[15], out=DC);
+    DRegister(in=lastOut, load=DC, out=DReg);
+
+    // ALU
+    And(a=instruction[15], b=instruction[11], out=zx);
+    And(a=instruction[15], b=instruction[10], out=nx);
+    And(a=instruction[15], b=instruction[9], out=zy);
+    And(a=instruction[15], b=instruction[8], out=ny);
+    And(a=instruction[15], b=instruction[7], out=f);
+    And(a=instruction[15], b=instruction[6], out=no);
+    ALU(x=DReg, y=mux2, zx=zx, nx=nx, zy=zy, ny=ny, f=f, no=no, out=outM, out=lastOut, zr=zr, ng=ng);
+
+    // PC
+    Or(a=ng, b=zr, out=ngzr);
+    Not(in=ngzr, out=nl);
+    And(a=instruction[15], b=zr, out=zjmp0);
+    And(a=zjmp0, b=instruction[1], out=zjmp);
+    And(a=instruction[15], b=ng, out=ngjmp0);
+    And(a=ngjmp0, b=instruction[2], out=ngjmp);
+    And(a=instruction[15], b=nl, out=nljmp0);
+    And(a=nljmp0, b=instruction[0], out=nljmp);
+    Or(a=zjmp, b=ngjmp, out=jmp0);
+    Or(a=jmp0, b=nljmp, out=jmp);
+    Not(in=jmp, out=Njmp);
+    PC(in=AReg, load=jmp, inc=Njmp, reset=reset, out[0..14]=pc);
 }
